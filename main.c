@@ -14,8 +14,47 @@ typedef struct Point Point;
 uint8_t map[MAP_H * MAP_W];
 Point player_pos;
 
+int sgn(double x);
 void show_map(SDL_Renderer*);
 void drawCircle(SDL_Renderer*, Point*, int);
+double norm(Point*);
+Point getIntersect(Point*, Point*);
+
+int sgn(double x) {
+    return (x >= 0) ? 1 : -1;
+}
+
+double norm(Point * v) {
+    return sqrt(pow(v->x, 2) + pow(v->y, 2));
+}
+
+Point getIntersect(Point * src, Point * dir) {
+    double dx = TILE_LENGTH;
+    double dy = TILE_LENGTH;
+    double slope = dir->x;
+    if (dir->y != 0) {
+        slope = (double)dir->x/(double)dir->y;
+    }
+
+    double lx = dx * sqrt(1 + 1 / pow(slope, 2));
+    double ly = dy * sqrt(1 + pow(slope, 2));
+
+    dx = dx * ((dir->x < 0) ? -1 : 1);
+    dy = dy * ((dir->y < 0) ? -1 : 1);
+
+    Point intersect;
+
+    if (lx < ly) {
+        intersect.x = src->x + dx;
+        intersect.y = src->y + dx / slope;
+    }
+    else {
+        intersect.x = src->x + dy * slope;
+        intersect.y = src->y + dy;
+    }
+
+    return intersect;
+}
 
 void drawCircle(SDL_Renderer* renderer, Point* pos, int radius) {
     SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
@@ -45,10 +84,12 @@ void show_map(SDL_Renderer* renderer) {
 void draw_rays(SDL_Renderer* renderer) {
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     double angle;
-    for (int i = 0; i < 360; i++) {
+    for (int i = 0; i < 360; i+=10) {
         angle = i * M_PI/180; // angle en radians
         Point p = {player_pos.x + LENGTH_RAY * cos(angle), player_pos.y + LENGTH_RAY * sin(angle)}; // point d'arrivée du rayon
-        SDL_RenderDrawLine(renderer, player_pos.x, player_pos.y, p.x, p.y);
+        Point dir = {p.x - player_pos.x, p.y - player_pos.y};
+        Point dst = getIntersect(&player_pos, &dir);
+        SDL_RenderDrawLine(renderer, player_pos.x, player_pos.y, dst.x, dst.y);
     }
 }
 
@@ -60,8 +101,6 @@ void show_player(SDL_Renderer* renderer) {
 int main(int argc, char** argv)
 {
 	parse_map(MAP_FILE);
-	print_map();
-    printf("taille int : %ld", sizeof(int));
 
     // Initialisation de la SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
